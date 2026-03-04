@@ -1,2 +1,2 @@
-PORT = 8000;
-PROJECT_NAME = 'youtube'
+export const DB_NAME = "Youtube";
+
