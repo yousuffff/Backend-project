@@ -1,21 +1,31 @@
-import mongoose from "mongoose";
 import dotenv from "dotenv";
-dotenv.config()
-import { DB_NAME } from "./constants";
+import connectDB from "./db/index.js";
+import mongoose from "mongoose";
+import { DB_NAME } from "./constants.js";
 import express from "express";
 
-const app = express()(async () => {
-  try {
-    await mongoose.connect(`${process.env.PROJECT_URL}/${DB_NAME}`);
-    app.on("error", (error) => {
-      console.log("error :", error);
-      throw error;
-    });
-    app.listen(process.env.PORT, () => {
-      console.log(`App is running on pprt no ${process.env.PORT}`);
-    });
-  } catch (error) {
-    console.log("database connection error :", error);
-    throw err;
-  }
-})();
+dotenv.config({ path: "./.env" });
+
+await connectDB();
+// const app = express();
+// // await connectDB();
+
+// (async () => {
+//   try {
+//     await mongoose.connect(`${process.env.PROJECT_URL}/${DB_NAME}`);
+//     app.on("error", (error) => {
+//       console.log("ERRR: ", error);
+//       throw error;
+//     });
+// app.get("/", (req, res) => {
+//       res.send("Server running 🚀");
+//     });
+//     app.listen(process.env.PORT, () => {
+//       console.log(`App is listening on port ${process.env.PORT}`);
+//     });
+
+//   } catch (error) {
+//     console.log("this is mongoose error", error);
+//     process.exit(1)
+//   }
+// })();
