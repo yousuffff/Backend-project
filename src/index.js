@@ -13,6 +13,12 @@ connectDB()
       console.log("ERROR", error);
       throw error;
     });
+    app.get("/", (req, res) => {
+      res.send("Hello World!");
+    });
+    app.get("/home", (req, res) => {
+      res.send("Hello!!! welcome to my home");
+    });
     app.listen(process.env.PORT || 8000, () => {
       console.log(`server is running on port : ${process.env.PORT}`);
     });
