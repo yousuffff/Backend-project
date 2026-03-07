@@ -7,6 +7,7 @@ const userSchema = new Schema(
       required: true,
       lowercase: true,
       unique: true,
+      trim: true,
       index: true,
     },
     email: {
@@ -14,21 +15,24 @@ const userSchema = new Schema(
       required: true,
       lowercase: true,
       unique: true,
+      trim: true,
     },
     fullname: {
       type: String,
       required: true,
       index: true,
+      trim: true,
     },
     avatar: {
       type: String, //cloudinary img
+      required: true,
     },
     coverImage: {
       type: String, //cloudinary img
     },
     password: {
       type: String,
-      required: true,
+      required: [true, "Password is required"],
     },
     watchHistory: [
       {
@@ -36,6 +40,9 @@ const userSchema = new Schema(
         ref: "Video",
       },
     ],
+    refresgToken: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
