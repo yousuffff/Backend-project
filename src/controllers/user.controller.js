@@ -4,6 +4,10 @@ const registerUser = asyncHandler(async (req, res) => {
   res.status(200).json({
     message: "Ok",
   });
+
+  const { fullName, email, password, userName } = req.body;
+
+  console.log("email", email);
 });
 
-export {registerUser};
+export { registerUser };
