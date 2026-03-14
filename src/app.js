@@ -1,3 +1,6 @@
+// Load environment variables before any code that depends on process.env
+import "./config.js";
+
 import express, { json } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
