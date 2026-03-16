@@ -90,7 +90,10 @@ const loginUser = asyncHandler(async (req, res) => {
     );
   }
 
-  user.isPasswordCorrect(passw)
+  const isPasswordValid = await user.isPasswordCorrect(password);
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Incorrect password");
+  }
 });
 
 export { registerUser };
