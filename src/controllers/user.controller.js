@@ -5,6 +5,20 @@ import { User } from "../models/user.model.js";
 import { upload } from "../middleware/multer.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(500, "Server is not Working");
+  }
+};
+
 const registerUser = asyncHandler(async (req, res) => {
   // get user details from frontend
   // validation - not empty
@@ -94,6 +108,13 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!isPasswordValid) {
     throw new ApiError(401, "Incorrect password");
   }
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id
+  );
+
+  const loggedInUser = User.findById(user._id).select(
+    "-password -refreshToken"
+  );
 });
 
-export { registerUser };
+export { registerUser, loginUser };
