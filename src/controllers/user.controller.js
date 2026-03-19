@@ -115,6 +115,23 @@ const loginUser = asyncHandler(async (req, res) => {
   const loggedInUser = User.findById(user._id).select(
     "-password -refreshToken"
   );
+
+  const option = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookies("accessToken", accessToken, option)
+    .cookies("refreshToken", refreshToken, option)
+    .json(
+      new ApiResponse(
+        200,
+        { user: loggedInUser, accessToken, refreshToken },
+        "user logged in successfully"
+      )
+    );
 });
 
 export { registerUser, loginUser };
