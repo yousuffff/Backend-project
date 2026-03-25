@@ -30,16 +30,16 @@ const registerUser = asyncHandler(async (req, res) => {
   // check for user creation
   // return res
 
-  const { fullName, email, password, username } = req.body;
+  const { fullName, email, password, userName } = req.body;
 
   if (
-    [fullName, username, email, password].some((field) => field?.trim() === "")
+    [fullName, userName, email, password].some((field) => field?.trim() === "")
   ) {
     throw new ApiError(400, "All field required");
   }
 
   const existedUser = await User.findOne({
-    $or: [{ email }, { username }],
+    $or: [{ email }, { userName }],
   });
   if (existedUser) {
     throw new ApiError(401, "User Already Exist");
@@ -68,7 +68,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const user = await User.create({
     fullName,
-    username: username.toLowerCase(),
+    userName: userName.toLowerCase(),
     password,
     email,
     avatar: avatar.url,
@@ -89,6 +89,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, userName, password } = req.body;
+  console.log(userName);
 
   if (!email || !userName) {
     throw new ApiError(401, "Please enter valid Username Or email");
@@ -112,7 +113,7 @@ const loginUser = asyncHandler(async (req, res) => {
     user._id
   );
 
-  const loggedInUser = User.findById(user._id).select(
+  const loggedInUser =await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
@@ -158,34 +159,27 @@ const logOutUser = asyncHandler(async (req, res) => {
     .clearCookie("refreshToken", option)
     .json(new ApiResponse(200, {}, "User Logged out"));
 });
-const changeCurrentPassword = asyncHandler(async(req, res) => {
-    const {oldPassword, newPassword} = req.body
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
 
-    
+  const user = await User.findById(req.user?._id);
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
 
-    const user = await User.findById(req.user?._id)
-    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "Invalid old password");
+  }
 
-    if (!isPasswordCorrect) {
-        throw new ApiError(400, "Invalid old password")
-    }
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
 
-    user.password = newPassword
-    await user.save({validateBeforeSave: false})
-
-    return res
+  return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Password changed successfully"))
-})
+    .json(new ApiResponse(200, {}, "Password changed successfully"));
+});
 
-
-const getCurrentUser = asyncHandler(async(req, res) => {
-    return res
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
     .status(200)
-    .json(new ApiResponse(
-        200,
-        req.user,
-        "User fetched successfully"
-    ))
-})
+    .json(new ApiResponse(200, req.user, "User fetched successfully"));
+});
 export { registerUser, loginUser, logOutUser };

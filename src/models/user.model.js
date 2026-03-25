@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 const userSchema = new Schema(
   {
-    username: {
+    userName: {
       type: String,
       required: true,
       lowercase: true,
@@ -62,7 +62,7 @@ userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
       _id: this._id,
-      username: this.username,
+      userName: this.userName,
       email: this.email,
       fullName: this.fullName,
     },
