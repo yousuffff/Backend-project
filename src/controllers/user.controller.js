@@ -8,14 +8,21 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 const generateAccessAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
-    return { accessToken, refreshToken };
+    return {
+      accessToken,
+      refreshToken,
+    };
   } catch (error) {
-    throw new ApiError(500, "Server is not Working");
+    console.log("TOKEN ERROR:", error);
+    throw new ApiError(500, "Failed to generate tokens");
   }
 };
 
@@ -91,7 +98,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const { email, userName, password } = req.body;
   console.log(userName);
 
-  if (!email || !userName) {
+  if (!(!email || !userName)) {
     throw new ApiError(401, "Please enter valid Username Or email");
   }
 
@@ -113,7 +120,7 @@ const loginUser = asyncHandler(async (req, res) => {
     user._id
   );
 
-  const loggedInUser =await User.findById(user._id).select(
+  const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
