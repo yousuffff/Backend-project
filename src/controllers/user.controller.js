@@ -317,18 +317,34 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Cover Image upload failed");
   }
 
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    {
-      $set: {
-        coverImage: coverImage.url,
-      },
-    },
-    { new: true }
-  ).select("-password -refreshToken");
+  const user = await User.findById(req.user?._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not Found");
+  }
+
+  if (user.coverImage) {
+    await deletefromCloudinary(user.coverImage);
+  }
+
+  user.coverImage = coverImage.url;
+  await user.save({ validateBeforeSave: false });
+
+  const updateUser = await User.findById(user._id).select(
+    "--password -refreshToken"
+  );
+  // const user = await User.findByIdAndUpdate(
+  //   req.user?._id,
+  //   {
+  //     $set: {
+  //       coverImage: coverImage.url,
+  //     },
+  //   },
+  //   { new: true }
+  // ).select("-password -refreshToken");
   return res
     .status(200)
-    .json(new ApiResponse(200, user, "Cover Image update successfully"));
+    .json(new ApiResponse(200, updateUser, "Cover Image update successfully"));
 });
 export {
   registerUser,
