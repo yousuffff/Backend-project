@@ -3,7 +3,10 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import { upload } from "../middleware/multer.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deletefromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -266,22 +269,41 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   }
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
+
   if (!avatar || !avatar.url) {
     throw new ApiError(500, "Avatar upload failed");
   }
 
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    {
-      $set: {
-        avatar: avatar.url,
-      },
-    },
-    { new: true }
-  ).select("-password -refreshToken");
+  const user = await User.findById(req.user?._id);
+  if (!user) {
+    throw new ApiError(404, "Account not found");
+  }
+
+  if (user.avatar) {
+    await deletefromCloudinary(user.avatar);
+  }
+
+  user.avatar = avatar.url;
+
+  await user.save({ validateBeforeSave: false });
+
+  const updateUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+
+  // const user = await User.findByIdAndUpdate(
+  //   req.user?._id,
+  //   {
+  //     $set: {
+  //       avatar: avatar.url,
+  //     },
+  //   },
+  //   { new: true }
+  // ).select("-password -refreshToken");
+
   return res
     .status(200)
-    .json(new ApiResponse(200, user, "Avatar update successfully"));
+    .json(new ApiResponse(200, updateUser, "Avatar update successfully"));
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {

@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
-import { getPublicIdfromUrl } from "./getPublic_Id";
+import { getPublicIdfromUrl } from "./getPublic_Id.js";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
