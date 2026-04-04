@@ -219,8 +219,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 });
 const changePassword = asyncHandler(async (req, res) => {
   if (!req.body) {
-  throw new ApiError(400, "Request body is missing");
-}
+    throw new ApiError(400, "Request body is missing");
+  }
   const { oldPassword, newPassword, confPassword } = req.body;
 
   if (newPassword !== confPassword) {
@@ -356,13 +356,13 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 const getUserProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
   if (!username?.trim()) {
-    throw new ApiError(404, "user not found");
+    throw new ApiError(400, "Username is required");
   }
 
   const channel = await User.aggregate([
     {
       $match: {
-        username: username?.toLowerCase(),
+        userName: username?.toLowerCase(),
       },
     },
     {
@@ -386,10 +386,10 @@ const getUserProfile = asyncHandler(async (req, res) => {
         subscriberCount: {
           $size: "$subscribers",
         },
-        channelSubcribedToCount: {
+        channelSubscribedToCount: {
           $size: "$subscribedTo",
         },
-        isSubcribed: {
+        isSubscribed: {
           $cond: {
             if: { $in: [req.user?._id, "$subscribers.subscriber"] },
             then: true,
@@ -401,7 +401,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
     {
       $project: {
         fullName: 1,
-        username: 1,
+        userName: 1,
         subscriberCount: 1,
         channelSubcribedToCount: 1,
         isSubcribed: 1,
