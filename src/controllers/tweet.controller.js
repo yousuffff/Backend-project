@@ -37,7 +37,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
 
   const userId = req.user._id;
   const { limit = 10, page = 1 } = req.query;
-  const fetchTweet = await Tweet.aggregate([
+  const pipeline = [
     {
       $match: {
         owner: userId,
@@ -71,13 +71,13 @@ const getUserTweets = asyncHandler(async (req, res) => {
         createdAt: -1,
       },
     },
-  ]);
+  ];
 
   const options = {
     limit: parseInt(limit),
     page: parseInt(page)
   }
-  // const paginatedUserTweet = await Tweet.mongooseAggregatePaginate(fetchTweet, options)
+  const paginatedUserTweet = await Tweet.mongooseAggregatePaginate(pipeline, options)
 
   return res
   .status(200).json(new ApiResponse(200, paginatedUserTweet,"User tweet fetched successfully"))
