@@ -1,10 +1,10 @@
 import mongoose, { isValidObjectId } from "mongoose";
-import { Tweet } from "../models/tweet.model.js";
+import { Tweet } from "../models/tweets.model.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
+import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const createTweet = asyncHandler(async (req, res) => {
   //TODO: create tweet
@@ -15,11 +15,11 @@ const createTweet = asyncHandler(async (req, res) => {
 
   const tweet = await Tweet.create({
     owner: req.user._id,
-    content,
+    content: content.trim(),
   });
 
   const createdTweet = await Tweet.findById(tweet._id);
-  if (!createTweet) {
+  if (!createdTweet) {
     throw new ApiError(500, "Something went wrong");
   }
 
@@ -28,8 +28,8 @@ const createTweet = asyncHandler(async (req, res) => {
     "avatar fullName userName"
   );
   return res
-    .status(200)
-    .json(new ApiResponse(200, populateTweet, "Tweet create Successfully"));
+    .status(201)
+    .json(new ApiResponse(201, populateTweet, "Tweet create Successfully"));
 });
 
 const getUserTweets = asyncHandler(async (req, res) => {
@@ -41,6 +41,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
     {
       $match: {
         owner: userId,
+        isDeleted: false,
       },
     },
     {
@@ -75,22 +76,89 @@ const getUserTweets = asyncHandler(async (req, res) => {
 
   const options = {
     limit: parseInt(limit),
-    page: parseInt(page)
-  }
-  const paginatedUserTweet = await Tweet.mongooseAggregatePaginate(pipeline, options)
+    page: parseInt(page),
+  };
+  const paginatedUserTweet = await Tweet.aggregatePaginate(pipeline, options);
 
   return res
-  .status(200).json(new ApiResponse(200, paginatedUserTweet,"User tweet fetched successfully"))
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        paginatedUserTweet,
+        "User tweet fetched successfully"
+      )
+    );
 });
-
-
 
 const updateTweet = asyncHandler(async (req, res) => {
   //TODO: update tweet
+
+  const { tweetId } = req.params;
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(404, "Tweet Not found");
+  }
+  const { content } = req.body;
+
+  if (!content?.trim()) {
+    throw new ApiError(400, "Content is required");
+  }
+  const newTweet = await Tweet.findOneAndUpdate(
+    {
+      _id: tweetId,
+      owner: req.user._id,
+      isDeleted: false,
+    },
+    {
+      $set: {
+        content: content.trim(),
+      },
+    },
+    {
+      new: true,
+    }
+  );
+  // const newTweet = await Tweet.findByIdAndUpdate(
+  //   tweetId,
+  //   {
+  //     $set: {
+  //       content: content,
+  //     },
+  //   },
+  //   {
+  //     new: true,
+  //   }
+  // );
+  if (!newTweet) {
+    throw new ApiError(404, "Tweet not found or unauthorized");
+  }
+  return res.status(200).json(new ApiResponse(200, newTweet, "Tweet Updated"));
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
   //TODO: delete tweet
+
+  const { tweetId } = req.params;
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(404, "Tweet Not found");
+  }
+  const deletedTweet = await Tweet.findOneAndUpdate(
+    {
+      _id: tweetId,
+      owner: req.user._id,
+      isDeleted: false,
+    },
+    {
+      $set: {
+        isDeleted: true,
+      },
+    },
+    { new: true }
+  );
+  if (!deletedTweet) {
+    throw new ApiError(404, "Tweet not found or Already Deleted");
+  }
+  return res.status(200).json(new ApiResponse(200, {}, "Tweet deleted"));
 });
 
 export { createTweet, getUserTweets, updateTweet, deleteTweet };
