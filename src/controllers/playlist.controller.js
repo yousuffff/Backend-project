@@ -101,6 +101,11 @@ const getPlaylistWithVideos = asyncHandler(async (req, res) => {
     {
       $addFields: {
         owner: { $first: "$owner" },
+        videoCount: {
+          $size: {
+            $ifNull: ["$videos", []],
+          },
+        },
       },
     }, // clean output
     {
@@ -109,6 +114,7 @@ const getPlaylistWithVideos = asyncHandler(async (req, res) => {
         name: 1,
         description: 1,
         createdAt: 1,
+        videoCount: 1,
 
         //video info
         "videos._id": 1,
