@@ -188,18 +188,96 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
   // TODO: remove video from playlist
 
-  
+  if (!isValidObjectId(playlistId) || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid IDs");
+  }
+
+  const userId = req.user._id;
+
+  const updatePlaylist = await Playlist.findOneAndUpdate(
+    {
+      _id: playlistId,
+      owner: userId,
+    },
+    {
+      $pull: {
+        videos: videoId,
+      },
+    },
+    {
+      new: true,
+    }
+  ).populate("videos", "title thumbnail duration");
+  if (!updatePlaylist) {
+    throw new ApiError(404, "Playlist not found or unauthorized");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatePlaylist, "Video removed from playlist"));
 });
 
 const deletePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
   // TODO: delete playlist
+
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "Invalid ID");
+  }
+
+  const userId = req.user._id;
+
+  const removePlaylist = await Playlist.findOneAndDelete({
+    _id: playlistId,
+    owner: userId,
+  });
+  if (!removePlaylist) {
+    throw new ApiError(404, "Playlist not found or unauthorized");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Playlist deleted Successfully"));
 });
 
 const updatePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
   const { name, description } = req.body;
   //TODO: update playlist
+
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "Invalid Id");
+  }
+  if (!name?.trim() && !description?.trim()) {
+    throw new ApiError(400, "At least one field is required");
+  }
+
+  const userId = req.user._id;
+
+  const updatedPlaylist = await Playlist.findOneAndUpdate(
+    {
+      _id: playlistId,
+      owner: userId,
+    },
+    {
+      $set: {
+        ...(name && { name: name.trim() }),
+        ...(description && { description: description.trim() }),
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!updatedPlaylist) {
+    throw new ApiError(404, "Playlist not found or Unauthorized");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatedPlaylist, "Playlist Updated successfully")
+    );
 });
 
 export {
