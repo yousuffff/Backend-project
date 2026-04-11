@@ -3,6 +3,7 @@ import { Playlist } from "../models/playlist.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { Video } from "../models/video.model.js";
 
 const createPlaylist = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
@@ -138,6 +139,49 @@ const getPlaylistWithVideos = asyncHandler(async (req, res) => {
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
+
+  if (!isValidObjectId(playlistId) || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid IDs");
+  }
+
+  const userId = req.user._id;
+  // const playlist = await Playlist.findOne({
+  //   _id: playlistId,
+  //   owner: userId,
+  // });
+
+  // checking video is available
+  const existingVideo = await Video.findById(videoId);
+  if (!existingVideo) {
+    throw new ApiError(404, "Video not Found");
+  }
+
+  const updatePlaylist = await Playlist.findOneAndUpdate(
+    {
+      _id: playlistId,
+      owner: userId,
+    },
+    {
+      $addToSet: {
+        videos: videoId,
+      },
+    },
+    {
+      new: true,
+    }
+  ).populate("videos", "title thumbnail duration");
+  if (!updatePlaylist) {
+    throw new ApiError(404, "Playlist not found or unauthorized");
+  }
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updatePlaylist,
+        "Video Added in playlist successfully"
+      )
+    );
 });
 
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
@@ -164,4 +208,5 @@ export {
   removeVideoFromPlaylist,
   deletePlaylist,
   updatePlaylist,
+  getPlaylistWithVideos,
 };
