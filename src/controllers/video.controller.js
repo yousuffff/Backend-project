@@ -24,7 +24,17 @@ const getVideoById = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid Video Id");
   }
 
-  const video = await Video.findById(videoId);
+  const video = await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $inc: {
+        views: 1, // increase view count
+      },
+    },
+    {
+      new: true,
+    }
+  ).populate("owner", "userName avatar");
   if (!video) {
     throw new ApiError(404, "Video not found");
   }
@@ -37,6 +47,42 @@ const getVideoById = asyncHandler(async (req, res) => {
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: update video details like title, description, thumbnail
+
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video Ids");
+  }
+
+  const { title, description} = req.body;
+  const userId = req.user._id;
+
+  if (!title?.trim() && !description?.trim() && !thumbnail?.trim()) {
+    throw new ApiError(400, "Atleast One Field is required for updation");
+  }
+
+  const updatedVideo = await Video.findOneAndUpdate(
+    {
+      _id: videoId,
+      owner: userId,
+    },
+    {
+      $set: {
+        ...(title && { title: title.trim() }),
+        ...(description && { description: description.trim() }),
+        ...(thumbnail && { thumbnail: thumbnail.trim() }),
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!updatedVideo) {
+    throw new ApiError(404, "Video not found or Unauthorized");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedVideo, "Video Info Updated"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
