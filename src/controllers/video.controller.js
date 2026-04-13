@@ -4,7 +4,10 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deletefromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
@@ -52,23 +55,45 @@ const updateVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid video Ids");
   }
 
-  const { title, description} = req.body;
+  const { title, description } = req.body;
   const userId = req.user._id;
 
-  if (!title?.trim() && !description?.trim() && !thumbnail?.trim()) {
-    throw new ApiError(400, "Atleast One Field is required for updation");
+  const video = await Video.findOne({
+    _id: videoId,
+    owner: userId,
+  });
+
+  if (!video) {
+    throw new ApiError(404, "Video is not found");
   }
 
-  const updatedVideo = await Video.findOneAndUpdate(
-    {
-      _id: videoId,
-      owner: userId,
-    },
+  const oldThumbnail = video.thumbnail;
+  let newThumbnailUrl = video.thumbnail;
+
+  const newThumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
+
+  if (!title?.trim() && !description?.trim() && !newThumbnailLocalPath) {
+    throw new ApiError(400, "Atleast One Field is required for updation");
+  }
+  if (newThumbnailLocalPath) {
+    const uploadThumbnail = await uploadOnCloudinary(newThumbnailLocalPath);
+
+    if (!uploadThumbnail?.url) {
+      throw new ApiError(500, "Thumbnail Upload failed");
+    }
+    newThumbnailUrl = uploadThumbnail.url;
+    if (oldThumbnail) {
+      await deletefromCloudinary(oldThumbnail, "image");
+    }
+  }
+
+  const updatedVideo = await Video.findByIdAndUpdate(
+    videoId,
     {
       $set: {
         ...(title && { title: title.trim() }),
         ...(description && { description: description.trim() }),
-        ...(thumbnail && { thumbnail: thumbnail.trim() }),
+        thumbnail: newThumbnailUrl,
       },
     },
     {
@@ -87,11 +112,70 @@ const updateVideo = asyncHandler(async (req, res) => {
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+  const userId = req.user._id;
   //TODO: delete video
+
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid Video Id");
+  }
+
+  const video = await Video.findOne({
+    _id: videoId,
+    owner: userId,
+  });
+  if (!video) {
+    throw new ApiError(404, "Video not found or Unauthorized");
+  }
+
+  // 🔥 Delete video file from Cloudinary
+  if (video.videoFile) {
+    await deletefromCloudinary(video.videoFile, "video");
+  }
+
+  // 🔥 Delete thumbnail from Cloudinary
+  if (video.thumbnail) {
+    await deletefromCloudinary(video.thumbnail, "image");
+  }
+
+  const deletingVideo = await Video.findByIdAndDelete(videoId);
+  if (!deletingVideo) {
+    throw new ApiError(500, "Someything went wrong");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Video deleted Successfully"));
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid Video Id");
+  }
+  const userId = req.user._id;
+
+  const video = await Video.findOne({
+    _id: videoId,
+    owner: userId,
+  });
+
+  if (!video) {
+    throw new ApiError(404, "Video not found or unauthorized");
+  }
+
+  video.isPublished = !video.isPublished;
+
+  await video.save();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        video,
+        `Video is ${isPublished ? "Published" : "Unpublished"} successfully `
+      )
+    );
 });
 
 export {
