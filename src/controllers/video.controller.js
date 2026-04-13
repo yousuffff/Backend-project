@@ -12,6 +12,91 @@ import {
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
   //TODO: get all videos based on query, sort, pagination
+
+  const pipeline = [];
+
+  //query
+  if (query) {
+    pipeline.push({
+      $match: {
+        title: {
+          $regex: query,
+          $options: "i", // case-insensitive
+        },
+      },
+    });
+  }
+
+  //filter by user
+  if (userId && isValidObjectId(userId)) {
+    pipeline.push({
+      $match: {
+        $owner: new mongoose.Types.ObjectId(userId),
+      },
+    });
+  }
+
+  //only published videos
+  pipeline.push({
+    $match: {
+      isPublished: true,
+    },
+  });
+
+  //owner lookup
+  pipeline.push({
+    $lookup: {
+      from: "users",
+      localField: "owner",
+      foreignField: "_id",
+      as: "owner",
+      pipeline: [
+        {
+          $project: {
+            userName: 1,
+            avatar: 1,
+          },
+        },
+      ],
+    },
+  });
+
+  //convert owner array -> object
+  pipeline.push({
+    $addFields: {
+      owner: { $first: "$owner" },
+    },
+  });
+
+  // 🔥 Sorting
+  pipeline.push({
+    $sort: {
+      [sortBy]: sortType === "asc" ? 1 : -1,
+    },
+  });
+
+  pipeline.push({
+    $project: {
+      title: 1,
+      thumbnail: 1,
+      description: 1,
+      views: 1,
+      createdAt: 1,
+      duration: 1,
+      "owner.userName": 1,
+      "owner.avatar": 1,
+    },
+  });
+
+  const options = {
+    limit: parseInt(limit) || 10,
+    page: parseInt(page) || 1,
+  };
+  const videos = await Video.aggregatePaginate(pipeline, options);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, videos, "Videos fetched successfully"));
+  //
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
