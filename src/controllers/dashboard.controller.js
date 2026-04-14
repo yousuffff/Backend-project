@@ -169,6 +169,11 @@ const getChannelStats = asyncHandler(async (req, res) => {
         fullName: 1,
         coverImage: 1,
         avatar: 1,
+
+        // 🔥 remove heavy fields
+        subscribers: 0,
+        videos: 0,
+        likes: 0,
       },
     },
   ]);
@@ -185,6 +190,36 @@ const getChannelStats = asyncHandler(async (req, res) => {
 });
 const getChannelVideos = asyncHandler(async (req, res) => {
   // TODO: Get all the videos uploaded by the channel
+  const { page = 1, limit = 10 } = req.query;
+  const userId = req.user._id;
+
+  const total = await Video.countDocuments({ owner: userId });
+  const videos = await Video.find({
+    owner: userId,
+  })
+    .sort({ createdAt: -1 })
+    .limit(parseInt(limit))
+    .skip((parseInt(page) - 1) * parseInt(limit))
+    .select("title thumbnail views createdAt");
+
+//   if (!videos?.length) {
+//     throw new ApiError(404, "Videos not found");
+//   }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          videos,
+          total,
+          page: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+        },
+        "Videos Fetched successfully"
+      )
+    );
 });
 
 export { getChannelStats, getChannelVideos };
