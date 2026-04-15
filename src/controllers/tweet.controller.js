@@ -35,7 +35,7 @@ const createTweet = asyncHandler(async (req, res) => {
 const getUserTweets = asyncHandler(async (req, res) => {
   // TODO: get user tweets
 
-  const userId = req.user._id;
+  const userId = new mongoose.Types.ObjectId(req.user._id);
   const { limit = 10, page = 1 } = req.query;
   const pipeline = [
     {
@@ -75,10 +75,12 @@ const getUserTweets = asyncHandler(async (req, res) => {
   ];
 
   const options = {
-    limit: parseInt(limit),
-    page: parseInt(page),
+    limit: parseInt(limit) || 10,
+    page: parseInt(page) || 1,
   };
-  const paginatedUserTweet = await Tweet.aggregatePaginate(pipeline, options);
+
+  const aggregate = Tweet.aggregate(pipeline);
+  const paginatedUserTweet = await Tweet.aggregatePaginate(aggregate, options);
 
   return res
     .status(200)
