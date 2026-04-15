@@ -171,9 +171,12 @@ const getChannelStats = asyncHandler(async (req, res) => {
         avatar: 1,
 
         // 🔥 remove heavy fields
-        subscribers: 0,
-        videos: 0,
-        likes: 0,
+        // subscribers: 0,
+        // videos: 0,
+        // likes: 0,
+
+        //this is not working bcoz $project only return 1 or 0 not both.In this case i choose 1 to return some fields 
+        
       },
     },
   ]);
