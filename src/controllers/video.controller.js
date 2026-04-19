@@ -8,7 +8,98 @@ import {
   deletefromCloudinary,
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
+const getFeed = asyncHandler(async(req,res)=>{
+  const userId = new mongoose.Types.ObjectId(req.user._id);
+  const { page = 1, limit = 10 } = req.query;
 
+  // 🔥 Step 1: get subscribed channels
+  const subscriptions = await Subscription.find({
+    subscriber: userId,
+  }).select("channel");
+
+  const channelIds = subscriptions.map((sub) => sub.channel);
+
+  // 🔥 Step 2: fetch videos
+  const feedVideos = await Video.aggregate([
+    {
+      $match: {
+        owner: { $in: channelIds },
+        isPublished: true,
+      },
+    },
+
+    // 👤 owner info
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: {
+              userName: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+
+    {
+      $addFields: {
+        owner: { $first: "$owner" },
+      },
+    },
+
+    // ❤️ likes count
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
+      },
+    },
+    {
+      $addFields: {
+        likesCount: { $size: "$likes" },
+      },
+    },
+
+    // 🔥 sort (latest)
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+
+    // 🧹 clean
+    {
+      $project: {
+        title: 1,
+        thumbnail: 1,
+        views: 1,
+        createdAt: 1,
+        likesCount: 1,
+        "owner.userName": 1,
+        "owner.avatar": 1,
+      },
+    },
+
+    // 📄 pagination
+    {
+      $skip: (parseInt(page) - 1) * parseInt(limit),
+    },
+    {
+      $limit: parseInt(limit),
+    },
+  ]);
+
+  return res.status(200).json(
+    new ApiResponse(200, feedVideos, "Feed fetched successfully")
+  );
+})
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
   //TODO: get all videos based on query, sort, pagination
